@@ -8,6 +8,12 @@ broadcasts, exactly like Laravel Echo does in the browser.
 The websocket lives on the native side (Swift/Kotlin, via the official Pusher
 SDKs); PHP just declares what to subscribe to and handles the events.
 
+## Requirements
+
+- PHP 8.2+, `nativephp/mobile` with Edge components (`NativeComponent`)
+- iOS 15+ / Android API 21+
+- A Pusher-protocol websocket server: [Vask](https://vask.dev), [Laravel Reverb](https://laravel.com/docs/reverb), or [Pusher](https://pusher.com)
+
 ## Install
 
 ```bash
@@ -46,7 +52,10 @@ public function mount(): void
 ```
 
 Events arrive as native events and re-render the component. Match the event name
-to what your server broadcasts — use `broadcastAs()` to keep it short.
+to what your server broadcasts — **without** `broadcastAs()` that's the full
+class name (`App\Events\OrderShipped`), so use `broadcastAs()` to keep it short.
+Unlike Laravel Echo, do **not** prefix the name with a dot: Vibe matches the raw
+broadcast name (`'OrderShipped'`, not `'.OrderShipped'`).
 
 Listeners are **channel-scoped**: an `OrderShipped` listener on `orders` never
 fires for a different channel that happens to broadcast the same event name.
@@ -63,8 +72,16 @@ public function shipped(string $status): void { ... }
 ## Private channels
 
 Private (`private-`) and presence (`presence-`) channels require a signed
-authorization from **your remote Laravel backend** (`/broadcasting/auth`, guarded
-by `auth:sanctum`). Point Vibe at it and give it the current bearer token:
+authorization from **your remote Laravel backend**. The default
+`/broadcasting/auth` route is session-guarded, which won't work for a mobile
+bearer token — register it under your API middleware instead:
+
+```php
+// Your BACKEND's broadcasting setup (e.g. AppServiceProvider::boot())
+Broadcast::routes(['prefix' => 'api/v1', 'middleware' => ['auth:sanctum']]);
+```
+
+Then point Vibe at it and give it the current bearer token:
 
 ```dotenv
 VIBE_AUTH_ENDPOINT=https://your-backend.example.com/api/v1/broadcasting/auth
@@ -145,6 +162,65 @@ Vibe::channel('orders')
   when no channels remain.
 - Listeners must be registered from within a `NativeComponent` (typically
   `mount()`); registering elsewhere throws a `VibeException`.
+
+## On your server
+
+The app is a plain Pusher-protocol subscriber, so the server side is standard
+[Laravel broadcasting](https://laravel.com/docs/broadcasting). The three pieces
+Vibe cares about:
+
+```php
+// 1. The event — broadcastAs() keeps the client-side name short; the payload
+//    ($event->message on the device) comes from public properties or broadcastWith().
+class OrderShipped implements ShouldBroadcast
+{
+    public function __construct(public string $message) {}
+
+    public function broadcastOn(): Channel
+    {
+        return new PrivateChannel('orders.'.$this->orderId);
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'OrderShipped';
+    }
+}
+```
+
+```php
+// 2. routes/channels.php — authorize private channels (true/false)...
+Broadcast::channel('orders.{orderId}', fn ($user, $orderId) => $user->canSee($orderId));
+
+// 3. ...and presence channels, which must RETURN THE MEMBER ARRAY — this becomes
+//    channel_data in the auth response and is what here()/joining() receive as
+//    ['id' => ..., 'info' => [...]]. Returning true breaks the roster.
+Broadcast::channel('room.{id}', fn ($user, $id) => ['id' => $user->id, 'name' => $user->name]);
+```
+
+Whispers require client events to be enabled on your websocket server (Pusher:
+app settings → "Enable client events"; check your Reverb/Vask config).
+
+## Troubleshooting
+
+**Nothing arrives:**
+- Event name mismatch — no `broadcastAs()` means the name is the FQCN
+  (`App\Events\OrderShipped`); and no leading dot, unlike Echo.
+- `#[OnEcho]` channel mismatch — use the **full** channel name as subscribed:
+  `channel: 'private-orders.42'`, not `channel: 'orders.42'`.
+- The app is backgrounded — the OS suspends the socket; events are
+  foreground-only.
+- Queued broadcasts need a running queue worker on the server (or
+  `ShouldBroadcastNow`).
+
+**Private/presence fails:** attach `->onError()` — auth rejections arrive as
+`auth_failed` / `subscription_failed` with the reason. Usual suspects: expired
+bearer token, `VIBE_AUTH_ENDPOINT` pointing at a dead tunnel/host, or the
+backend route not guarded by an API (token) middleware.
+
+**Misconfiguration throws:** missing `PUSHER_APP_KEY`/`PUSHER_HOST`, or a
+private/presence subscribe without `VIBE_AUTH_ENDPOINT`, throws `VibeException`
+at subscribe-time rather than failing silently.
 
 ## Notes
 
