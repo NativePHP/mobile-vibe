@@ -36,7 +36,7 @@ describe('Plugin Manifest', function () {
 
         foreach ($manifest['bridge_functions'] as $function) {
             expect($function)->toHaveKeys(['name']);
-            expect($function)->toHaveAnyKeys(['android', 'ios']);
+            expect(isset($function['android']) || isset($function['ios']))->toBeTrue();
         }
     });
 

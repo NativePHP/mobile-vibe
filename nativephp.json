@@ -10,18 +10,17 @@
         "type": "free"
     },
     "author": {
-        "name": "Your Name",
-        "email": "you@example.com",
-        "url": ""
+        "name": "Bifrost Technology, LLC",
+        "email": "support@nativephp.com",
+        "url": "https://nativephp.com"
     },
-    "homepage": "",
-    "repository": "",
+    "homepage": "https://github.com/nativephp/mobile-vibe",
+    "repository": "https://github.com/nativephp/mobile-vibe",
     "funding": [],
     "platforms": [
         "android",
         "ios"
     ],
-    "icon": "resources/icon.png",
     "screenshots": [],
     "bridge_functions": [
         {

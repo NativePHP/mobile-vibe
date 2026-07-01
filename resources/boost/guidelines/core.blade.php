@@ -8,13 +8,14 @@ Mobile components. PHP is a client subscriber; the socket lives natively.
 Standard `PUSHER_*` vars in `.env` (`PUSHER_APP_KEY`, `PUSHER_HOST`,
 `PUSHER_PORT`, `PUSHER_SCHEME`). For private/presence channels also set
 `VIBE_AUTH_ENDPOINT` (your remote Laravel `/broadcasting/auth`, `auth:sanctum`)
-and register a bearer-token resolver.
+and register a bearer-token resolver. Missing config throws `VibeException`
+at subscribe-time on-device.
 
 ### PHP Usage
 
 Subscribe in a NativeComponent's `mount()`. The websocket only reaches the
 component while that screen is foregrounded; subscriptions auto-teardown on
-unmount.
+unmount (fluent and attribute usage alike). Channels are refcounted natively.
 
 @verbatim
 <code-snippet name="Vibe channels" lang="php">
@@ -35,9 +36,11 @@ Vibe::presence('room.1')
 </code-snippet>
 @endverbatim
 
-The event name matches what the server broadcasts (use `broadcastAs()`). The
-`#[Nativephp\Vibe\Attributes\OnEcho('EventName')]` attribute is an alternative to
-`->on()`.
+The event name matches what the server broadcasts (use `broadcastAs()`).
+Listeners are channel-scoped — same-named events on other channels don't fire
+them. The attribute alternative to `->on()` requires the channel (full name as
+subscribed, e.g. `private-orders.42`):
+`#[Nativephp\Vibe\Attributes\OnEcho('EventName', channel: 'orders')]`.
 
 ### Auth token (private / presence)
 
@@ -54,10 +57,27 @@ Vibe::withToken($freshToken);
 </code-snippet>
 @endverbatim
 
+### Connection lifecycle & errors
+
+@verbatim
+<code-snippet name="Lifecycle hooks" lang="php">
+Vibe::channel('orders')
+    ->onDisconnect(fn () => $this->live = false)   // "reconnecting…" UI
+    ->onReconnect(fn () => $this->refetch())       // refetch missed state
+    ->onError(fn ($e) => /* $e->type, $e->channel, $e->message */);
+</code-snippet>
+@endverbatim
+
+These are connection-level (fire for any subscription). `onError` surfaces
+failed channel auth (403 from `/broadcasting/auth`), failed subscriptions, and
+connection errors.
+
 ### Notes
 
 - Foreground-only (the OS suspends background sockets — use push notifications
   for closed-app delivery).
 - Events are liveness signals, not source of truth — refetch on reconnect.
+  Presence `here` rosters re-deliver automatically after reconnect.
+- Listeners must be registered from within a NativeComponent; elsewhere throws.
 - A screen mutating a live list frequently should set
   `protected bool $forceFullFrames = true;` on the component.

@@ -4,6 +4,7 @@ namespace Nativephp\Vibe;
 
 use Closure;
 use Native\Mobile\Edge\NativeComponent;
+use Nativephp\Vibe\Exceptions\VibeException;
 use ReflectionFunction;
 
 /**
@@ -13,32 +14,38 @@ use ReflectionFunction;
  *         $this->status = $event->status;   // $this is the component
  *     });
  *
- * The callback is written inside a component method, so it is already bound to
- * that component ($this). We recover the component from the closure and register
- * the listener on it — no "current component" global needed. Listeners are
- * persistent (fire on every matching event) and cleared when the component
- * unmounts. Chainable: call ->on() as many times as you like.
+ * Broadcast events arrive as channel-scoped native events
+ * (vibe:event:<channel>:<name>), so a listener on this subscription only fires
+ * for THIS channel — two channels broadcasting the same event name never cross.
+ *
+ * The owning component is resolved when the subscription is created (from the
+ * call stack) or recovered from the listener closure's $this; listeners are
+ * persistent (fire on every matching event) and the channel is unsubscribed
+ * automatically when the component unmounts. Chainable: call ->on() as many
+ * times as you like.
  */
 class PendingSubscription
 {
     protected bool $cleanupRegistered = false;
 
-    public function __construct(protected string $channel) {}
+    public function __construct(
+        protected string $channel,
+        protected ?NativeComponent $component = null,
+    ) {
+        // Register unmount cleanup as soon as we know the component, so even
+        // attribute-only usage (Vibe::channel(...) + #[OnEcho]) tears down.
+        if ($component !== null) {
+            $this->unsubscribeOnUnmount($component);
+        }
+    }
 
     /**
-     * Run $callback every time $event arrives on this subscription. $event is a
+     * Run $callback every time $event arrives on THIS channel. $event is a
      * plain object built from the broadcast payload ($event->field).
      */
     public function on(string $event, Closure $callback): static
     {
-        $component = (new ReflectionFunction($callback))->getClosureThis();
-
-        if ($component instanceof NativeComponent) {
-            $component->registerNativeEventListener($event, $callback);
-            $this->unsubscribeOnUnmount($component);
-        }
-
-        return $this;
+        return $this->listen("vibe:event:{$this->channel}:{$event}", $callback, 'on');
     }
 
     /**
@@ -55,7 +62,7 @@ class PendingSubscription
         return $this;
     }
 
-    /** Listen for a whisper (client event) sent by another subscriber. */
+    /** Listen for a whisper (client event) sent by another subscriber of this channel. */
     public function listenForWhisper(string $event, Closure $callback): static
     {
         return $this->on('client-'.$event, $callback);
@@ -69,14 +76,27 @@ class PendingSubscription
      */
     public function onReconnect(Closure $callback): static
     {
-        $component = (new ReflectionFunction($callback))->getClosureThis();
+        return $this->listen('vibe:reconnected', $callback, 'onReconnect');
+    }
 
-        if ($component instanceof NativeComponent) {
-            $component->registerNativeEventListener('vibe:reconnected', $callback);
-            $this->unsubscribeOnUnmount($component);
-        }
+    /**
+     * Run $callback when the socket DISCONNECTS (backgrounding, network loss).
+     * Pairs with onReconnect() — e.g. show a "reconnecting…" banner.
+     * Connection-level, like onReconnect().
+     */
+    public function onDisconnect(Closure $callback): static
+    {
+        return $this->listen('vibe:disconnected', $callback, 'onDisconnect');
+    }
 
-        return $this;
+    /**
+     * Run $callback when the native side reports an error — a failed channel
+     * auth (403 from /broadcasting/auth), a failed subscription, or a
+     * connection error. $event is { type, channel, message }. Connection-level.
+     */
+    public function onError(Closure $callback): static
+    {
+        return $this->listen('vibe:error', $callback, 'onError');
     }
 
     /**
@@ -103,22 +123,45 @@ class PendingSubscription
     /**
      * Register a presence member listener. Native emits synthetic, channel-scoped
      * events (vibe:here|joining|leaving:<channel>); $forward adapts the generic
-     * event object into the shape here()/joining()/leaving() promise. Recovers the
-     * component from the user's callback (already bound to $this), like on().
+     * event object into the shape here()/joining()/leaving() promise.
      */
     private function member(string $type, Closure $callback, Closure $forward): static
     {
-        $component = (new ReflectionFunction($callback))->getClosureThis();
+        return $this->listen(
+            "vibe:{$type}:{$this->channel}",
+            fn ($event) => $forward($event, $callback),
+            $type,
+            resolveFrom: $callback,
+        );
+    }
 
-        if ($component instanceof NativeComponent) {
-            $component->registerNativeEventListener(
-                "vibe:{$type}:{$this->channel}",
-                fn ($event) => $forward($event, $callback)
-            );
-            $this->unsubscribeOnUnmount($component);
+    /**
+     * Register $callback for a fully-resolved native event name on the owning
+     * component. The component is the one captured at subscribe-time, or —
+     * when subscribe() was called outside a component (e.g. from a service) —
+     * recovered from the user's closure, which is bound to $this where it was
+     * written. Throws when neither yields a component: a listener that can
+     * never fire is a bug, not a no-op.
+     */
+    private function listen(string $nativeEvent, Closure $callback, string $method, ?Closure $resolveFrom = null): static
+    {
+        $component = $this->component ?? $this->componentFrom($resolveFrom ?? $callback);
+
+        if ($component === null) {
+            throw VibeException::listenerOutsideComponent($method);
         }
 
+        $component->registerNativeEventListener($nativeEvent, $callback);
+        $this->unsubscribeOnUnmount($component);
+
         return $this;
+    }
+
+    private function componentFrom(Closure $callback): ?NativeComponent
+    {
+        $bound = (new ReflectionFunction($callback))->getClosureThis();
+
+        return $bound instanceof NativeComponent ? $bound : null;
     }
 
     /**

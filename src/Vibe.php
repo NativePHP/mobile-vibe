@@ -3,6 +3,8 @@
 namespace Nativephp\Vibe;
 
 use Closure;
+use Native\Mobile\Edge\NativeComponent;
+use Nativephp\Vibe\Exceptions\VibeException;
 
 class Vibe
 {
@@ -16,6 +18,13 @@ class Vibe
      */
     protected ?Closure $tokenResolver = null;
 
+    /**
+     * The most recent token pushed via withToken(). Preferred over the static
+     * config token on later subscribes, so a runtime refresh isn't clobbered
+     * by a stale compile-time value.
+     */
+    protected ?string $pushedToken = null;
+
     public function resolveTokenUsing(Closure $resolver): void
     {
         $this->tokenResolver = $resolver;
@@ -23,11 +32,13 @@ class Vibe
 
     protected function currentToken(): ?string
     {
-        // A registered runtime resolver wins; otherwise fall back to the static
-        // config token (POC / single-token setups).
-        return $this->tokenResolver
-            ? ($this->tokenResolver)()
-            : config('vibe.auth.token');
+        // Precedence: runtime resolver > token pushed via withToken() > the
+        // static config token (POC / single-token setups).
+        if ($this->tokenResolver) {
+            return ($this->tokenResolver)();
+        }
+
+        return $this->pushedToken ?? config('vibe.auth.token');
     }
 
     /**
@@ -37,6 +48,8 @@ class Vibe
      */
     public function withToken(string $token): void
     {
+        $this->pushedToken = $token;
+
         if (function_exists('nativephp_call')) {
             nativephp_call('Vibe.SetAuthToken', json_encode(['token' => $token]));
         }
@@ -45,23 +58,41 @@ class Vibe
     /**
      * Subscribe the native socket to a channel.
      *
-     * Reads the Reverb connection from config (populated from the app's .env)
-     * and hands it to the native EchoClient over the bridge. The native side
-     * connects lazily on the first subscribe and refcounts channels, so calling
-     * this for a channel that is already subscribed is a cheap no-op.
+     * Reads the Pusher-protocol connection from config (populated from the
+     * app's .env) and hands it to the native EchoClient over the bridge. The
+     * native side connects lazily on the first subscribe and refcounts
+     * channels, so subscribing to an already-subscribed channel is a cheap
+     * no-op and the channel stays open until the last subscriber leaves.
      *
-     * Incoming messages arrive back as native (type-20) events and are routed
-     * to #[OnEcho] listeners — or to fluent ->on() closures on the returned
-     * PendingSubscription — on the active NativeComponent.
+     * Incoming messages arrive back as channel-scoped native (type-20) events
+     * (vibe:event:<channel>:<name>) and are routed to #[OnEcho] listeners — or
+     * to fluent ->on() closures on the returned PendingSubscription — on the
+     * active NativeComponent. The subscription is torn down automatically when
+     * that component unmounts, including for attribute-only usage.
+     *
+     * @throws VibeException when called on-device without PUSHER_APP_KEY/PUSHER_HOST,
+     *                       or for private-/presence- channels without VIBE_AUTH_ENDPOINT.
      */
     public function subscribe(string $channel): PendingSubscription
     {
+        $component = $this->detectComponent();
+
         if (function_exists('nativephp_call')) {
             $conn = config('vibe.connection', []);
 
+            if (empty($conn['key']) || empty($conn['host'])) {
+                throw VibeException::missingConnection();
+            }
+
+            $needsAuth = str_starts_with($channel, 'private-') || str_starts_with($channel, 'presence-');
+
+            if ($needsAuth && empty(config('vibe.auth.endpoint'))) {
+                throw VibeException::missingAuthEndpoint($channel);
+            }
+
             nativephp_call('Vibe.Subscribe', json_encode([
-                'key' => $conn['key'] ?? null,
-                'host' => $conn['host'] ?? null,
+                'key' => $conn['key'],
+                'host' => $conn['host'],
                 'port' => (int) ($conn['port'] ?? 443),
                 'tls' => ($conn['scheme'] ?? 'https') === 'https',
                 'channel' => $channel,
@@ -73,7 +104,7 @@ class Vibe
             ]));
         }
 
-        return new PendingSubscription($channel);
+        return new PendingSubscription($channel, $component);
     }
 
     /**
@@ -120,7 +151,8 @@ class Vibe
     }
 
     /**
-     * Unsubscribe the native socket from a channel (refcounted native-side).
+     * Unsubscribe the native socket from a channel (refcounted native-side; the
+     * channel actually closes when the last subscriber leaves).
      */
     public function unsubscribe(string $channel): void
     {
@@ -131,5 +163,26 @@ class Vibe
         nativephp_call('Vibe.Unsubscribe', json_encode([
             'channel' => $channel,
         ]));
+    }
+
+    /**
+     * Find the NativeComponent that is subscribing, by walking up the call
+     * stack from Vibe::subscribe() (typically to mount()). Lets subscribe()
+     * register unmount cleanup even when the caller only uses #[OnEcho]
+     * attributes and never attaches a fluent closure.
+     */
+    protected function detectComponent(): ?NativeComponent
+    {
+        if (! class_exists(NativeComponent::class)) {
+            return null;
+        }
+
+        foreach (debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT | DEBUG_BACKTRACE_IGNORE_ARGS, 20) as $frame) {
+            if (($frame['object'] ?? null) instanceof NativeComponent) {
+                return $frame['object'];
+            }
+        }
+
+        return null;
     }
 }

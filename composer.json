@@ -3,10 +3,15 @@
     "description": "Websockets for NativePHP Mobile — live server events (Pusher protocol: Vask / Reverb / Pusher)",
     "type": "nativephp-plugin",
     "license": "MIT",
+    "homepage": "https://github.com/nativephp/mobile-vibe",
+    "support": {
+        "issues": "https://github.com/nativephp/mobile-vibe/issues",
+        "source": "https://github.com/nativephp/mobile-vibe"
+    },
     "authors": [
         {
-            "name": "Your Name",
-            "email": "you@example.com"
+            "name": "Bifrost Technology, LLC",
+            "email": "support@nativephp.com"
         }
     ],
     "require": {

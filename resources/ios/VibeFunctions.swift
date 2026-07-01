@@ -16,10 +16,10 @@ enum VibeFunctions {
             let authToken = parameters["authToken"] as? String
 
             guard !key.isEmpty, !host.isEmpty, !channel.isEmpty else {
-                return BridgeResponse.success(data: [
-                    "subscribed": false,
-                    "reason": "missing key/host/channel",
-                ])
+                return BridgeResponse.error(
+                    code: "vibe.missing_config",
+                    message: "Vibe.Subscribe requires key, host and channel (check PUSHER_APP_KEY / PUSHER_HOST)"
+                )
             }
 
             EchoClient.shared.subscribe(
