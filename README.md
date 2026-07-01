@@ -11,7 +11,6 @@ SDKs); PHP just declares what to subscribe to and handles the events.
 ## Requirements
 
 - PHP 8.3+, `nativephp/mobile` with Edge components (`NativeComponent`)
-- iOS 15+ / Android API 21+
 - A Pusher-protocol websocket server: [Vask](https://vask.dev), [Laravel Reverb](https://laravel.com/docs/reverb), or [Pusher](https://pusher.com)
 
 ## Install
