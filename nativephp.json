@@ -1,0 +1,90 @@
+{
+    "name": "nativephp/mobile-vibe",
+    "version": "1.0.0",
+    "description": "Reverb / Pusher-protocol websocket client — live server events into NativePHP components",
+    "namespace": "Vibe",
+    "keywords": ["websocket", "reverb", "pusher", "broadcasting", "realtime"],
+    "category": "utilities",
+    "license": "MIT",
+    "pricing": {
+        "type": "free"
+    },
+    "author": {
+        "name": "Your Name",
+        "email": "you@example.com",
+        "url": ""
+    },
+    "homepage": "",
+    "repository": "",
+    "funding": [],
+    "platforms": [
+        "android",
+        "ios"
+    ],
+    "icon": "resources/icon.png",
+    "screenshots": [],
+    "bridge_functions": [
+        {
+            "name": "Vibe.Subscribe",
+            "android": "com.nativephp.plugins.vibe.VibeFunctions.Subscribe",
+            "ios": "VibeFunctions.Subscribe",
+            "description": "Connect to Reverb (if needed) and subscribe to a channel"
+        },
+        {
+            "name": "Vibe.Unsubscribe",
+            "android": "com.nativephp.plugins.vibe.VibeFunctions.Unsubscribe",
+            "ios": "VibeFunctions.Unsubscribe",
+            "description": "Unsubscribe from a channel"
+        },
+        {
+            "name": "Vibe.SetAuthToken",
+            "android": "com.nativephp.plugins.vibe.VibeFunctions.SetAuthToken",
+            "ios": "VibeFunctions.SetAuthToken",
+            "description": "Update the bearer token used for private/presence channel auth"
+        },
+        {
+            "name": "Vibe.Trigger",
+            "android": "com.nativephp.plugins.vibe.VibeFunctions.Trigger",
+            "ios": "VibeFunctions.Trigger",
+            "description": "Send a client event (client-*) to other subscribers of a channel"
+        }
+    ],
+    "android": {
+        "min_version": 21,
+        "permissions": [
+            "android.permission.INTERNET"
+        ],
+        "repositories": [],
+        "dependencies": {
+            "implementation": [
+                "com.pusher:pusher-java-client:2.4.4"
+            ]
+        },
+        "activities": [],
+        "services": [],
+        "receivers": [],
+        "providers": []
+    },
+    "ios": {
+        "min_version": "15.0",
+        "permissions": [],
+        "repositories": [],
+        "dependencies": {
+            "swift_packages": [
+                {
+                    "url": "https://github.com/pusher/pusher-websocket-swift",
+                    "version": "10.1.5",
+                    "products": ["PusherSwift"]
+                }
+            ],
+            "pods": []
+        }
+    },
+    "assets": {
+        "android": [],
+        "ios": []
+    },
+    "secrets": [],
+    "events": [],
+    "service_provider": "Nativephp\\Vibe\\VibeServiceProvider"
+}
