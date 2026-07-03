@@ -1,6 +1,6 @@
 <?php
 
-namespace Nativephp\Vibe;
+namespace NativePHP\Vibe;
 
 use Illuminate\Support\ServiceProvider;
 

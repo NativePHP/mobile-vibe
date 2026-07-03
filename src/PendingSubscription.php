@@ -1,10 +1,10 @@
 <?php
 
-namespace Nativephp\Vibe;
+namespace NativePHP\Vibe;
 
 use Closure;
 use Native\Mobile\Edge\NativeComponent;
-use Nativephp\Vibe\Exceptions\VibeException;
+use NativePHP\Vibe\Exceptions\VibeException;
 use ReflectionFunction;
 
 /**

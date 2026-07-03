@@ -19,7 +19,7 @@ unmount (fluent and attribute usage alike). Channels are refcounted natively.
 
 @verbatim
 <code-snippet name="Vibe channels" lang="php">
-use Nativephp\Vibe\Facades\Vibe;
+use NativePHP\Vibe\Facades\Vibe;
 
 // Public
 Vibe::channel('orders')->on('OrderShipped', fn ($e) => $this->status = $e->status);
@@ -40,13 +40,13 @@ The event name matches what the server broadcasts (use `broadcastAs()`).
 Listeners are channel-scoped — same-named events on other channels don't fire
 them. The attribute alternative to `->on()` requires the channel (full name as
 subscribed, e.g. `private-orders.42`):
-`#[Nativephp\Vibe\Attributes\OnEcho('EventName', channel: 'orders')]`.
+`#[NativePHP\Vibe\Attributes\OnEcho('EventName', channel: 'orders')]`.
 
 ### Auth token (private / presence)
 
 @verbatim
 <code-snippet name="Token resolver" lang="php">
-use Nativephp\Vibe\Facades\Vibe;
+use NativePHP\Vibe\Facades\Vibe;
 use Native\Mobile\Facades\SecureStorage;
 
 // AppServiceProvider::boot()

@@ -40,7 +40,7 @@ Vibe throws a `VibeException` immediately rather than failing silently.
 ## Public channels
 
 ```php
-use Nativephp\Vibe\Facades\Vibe;
+use NativePHP\Vibe\Facades\Vibe;
 
 public function mount(): void
 {
@@ -64,7 +64,7 @@ so the listener is scoped (use the full name as subscribed, e.g.
 `private-orders.42` for `Vibe::private('orders.42')`):
 
 ```php
-#[\Nativephp\Vibe\Attributes\OnEcho('OrderShipped', channel: 'orders')]
+#[\NativePHP\Vibe\Attributes\OnEcho('OrderShipped', channel: 'orders')]
 public function shipped(string $status): void { ... }
 ```
 
@@ -88,7 +88,7 @@ VIBE_AUTH_ENDPOINT=https://your-backend.example.com/api/v1/broadcasting/auth
 
 ```php
 // e.g. in AppServiceProvider::boot()
-use Nativephp\Vibe\Facades\Vibe;
+use NativePHP\Vibe\Facades\Vibe;
 use Native\Mobile\Facades\SecureStorage;
 
 Vibe::resolveTokenUsing(fn () => SecureStorage::get('api_token'));

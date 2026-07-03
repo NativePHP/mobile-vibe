@@ -7,10 +7,10 @@
  * guards are testable in isolation.
  */
 
-use Nativephp\Vibe\Attributes\OnEcho;
-use Nativephp\Vibe\Exceptions\VibeException;
-use Nativephp\Vibe\PendingSubscription;
-use Nativephp\Vibe\Vibe;
+use NativePHP\Vibe\Attributes\OnEcho;
+use NativePHP\Vibe\Exceptions\VibeException;
+use NativePHP\Vibe\PendingSubscription;
+use NativePHP\Vibe\Vibe;
 
 describe('Channel naming', function () {
     it('subscribes public channels by bare name', function () {

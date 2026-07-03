@@ -1,6 +1,6 @@
 <?php
 
-namespace Nativephp\Vibe\Exceptions;
+namespace NativePHP\Vibe\Exceptions;
 
 use RuntimeException;
 

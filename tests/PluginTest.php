@@ -115,7 +115,7 @@ describe('PHP Classes', function () {
         expect(file_exists($file))->toBeTrue();
 
         $content = file_get_contents($file);
-        expect($content)->toContain('namespace Nativephp\Vibe');
+        expect($content)->toContain('namespace NativePHP\Vibe');
         expect($content)->toContain('class VibeServiceProvider');
     });
 
@@ -124,7 +124,7 @@ describe('PHP Classes', function () {
         expect(file_exists($file))->toBeTrue();
 
         $content = file_get_contents($file);
-        expect($content)->toContain('namespace Nativephp\Vibe\Facades');
+        expect($content)->toContain('namespace NativePHP\Vibe\Facades');
         expect($content)->toContain('class Vibe extends Facade');
     });
 
@@ -133,7 +133,7 @@ describe('PHP Classes', function () {
         expect(file_exists($file))->toBeTrue();
 
         $content = file_get_contents($file);
-        expect($content)->toContain('namespace Nativephp\Vibe');
+        expect($content)->toContain('namespace NativePHP\Vibe');
         expect($content)->toContain('class Vibe');
     });
 });

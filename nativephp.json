@@ -49,7 +49,7 @@
         }
     ],
     "android": {
-        "min_version": 21,
+        "min_version": 26,
         "permissions": [
             "android.permission.INTERNET"
         ],
@@ -85,5 +85,5 @@
     },
     "secrets": [],
     "events": [],
-    "service_provider": "Nativephp\\Vibe\\VibeServiceProvider"
+    "service_provider": "NativePHP\\Vibe\\VibeServiceProvider"
 }

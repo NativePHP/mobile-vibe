@@ -1,6 +1,6 @@
 <?php
 
-namespace Nativephp\Vibe\Attributes;
+namespace NativePHP\Vibe\Attributes;
 
 use Attribute;
 use Native\Mobile\Attributes\On;
