@@ -2,6 +2,18 @@
 
 All notable changes to `nativephp/mobile-vibe` will be documented in this file.
 
+## 2.0.0 — 2026-07-23
+
+- **Breaking:** require `nativephp/mobile` ^4.0 and drop the `^3.0` constraint
+  (#1). The plugin's native side calls `NativeElementBridge.sendNativeEvent`
+  and its PHP side uses `Native\Mobile\Attributes\On` and
+  `Native\Mobile\Edge\NativeComponent` — none of which exist in the v3 core,
+  so 1.0.x installs on v3 failed at native build time
+  (`cannot find 'NativeElementBridge' in scope`). Composer now refuses the
+  pairing up front instead.
+- Fix `nativephp.json` manifest version drift (self-reported 1.0.0 on the
+  1.0.1 tag); manifest and release versions now match.
+
 ## 1.0.0 — 2026-07-01
 
 Initial release.

@@ -10,7 +10,7 @@ SDKs); PHP just declares what to subscribe to and handles the events.
 
 ## Requirements
 
-- PHP 8.3+, `nativephp/mobile` with Edge components (`NativeComponent`)
+- PHP 8.3+, `nativephp/mobile` **v4** with Edge components (`NativeComponent`) — v3 is not supported: the plugin's native event pipeline (`NativeElementBridge`) only exists in the v4 core
 - A Pusher-protocol websocket server: [Vask](https://vask.dev), [Laravel Reverb](https://laravel.com/docs/reverb), or [Pusher](https://pusher.com)
 
 ## Install
