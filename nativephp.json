@@ -1,6 +1,6 @@
 {
     "name": "nativephp/mobile-vibe",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Reverb / Pusher-protocol websocket client — live server events into NativePHP components",
     "namespace": "Vibe",
     "keywords": ["websocket", "reverb", "pusher", "broadcasting", "realtime"],
