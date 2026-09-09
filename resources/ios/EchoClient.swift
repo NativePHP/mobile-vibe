@@ -183,18 +183,39 @@ final class EchoClient: NSObject, PusherDelegate {
         // Global binding: receive ALL events across the connection and forward
         // the developer-facing ones, scoped by channel. Pusher's own protocol
         // frames (pusher:*, pusher_internal:*) are filtered out.
-        _ = pusher.bind(eventCallback: { (event: PusherEvent) in
+        _ = pusher.bind(eventCallback: { [weak self] (event: PusherEvent) in
             let name = event.eventName
             if name.hasPrefix("pusher:") || name.hasPrefix("pusher_internal:") { return }
             guard let channel = event.channelName else { return }
             NativeElementBridge.sendNativeEvent(
                 eventName: "vibe:event:\(channel):\(name)",
-                payloadJson: event.data ?? "{}"
+                payloadJson: self?.payloadJson(for: event) ?? "{}"
             )
         })
 
         pusher.connect()
         self.pusher = pusher
+    }
+
+    /// The event's `data` as a JSON string for PHP.
+    ///
+    /// A server-triggered event carries `data` as a JSON *string*, which
+    /// PusherSwift exposes as `event.data`. A client event (`client-*`,
+    /// i.e. a whisper) is relayed by the server exactly as the sending
+    /// client framed it: `data` is a JSON *object*, so `event.data` is nil
+    /// and the payload used to reach PHP as `{}`. Fall back to the raw
+    /// frame and serialise the object ourselves — the same thing
+    /// pusher-websocket-java does on Android, which is why whispers always
+    /// worked there.
+    private func payloadJson(for event: PusherEvent) -> String {
+        if let data = event.data { return data }
+
+        guard let raw = event.property(withKey: "data"),
+              JSONSerialization.isValidJSONObject(raw),
+              let bytes = try? JSONSerialization.data(withJSONObject: raw),
+              let json = String(data: bytes, encoding: .utf8) else { return "{}" }
+
+        return json
     }
 
     // MARK: - PusherDelegate
